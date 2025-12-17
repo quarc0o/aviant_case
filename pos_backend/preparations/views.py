@@ -146,21 +146,25 @@ def accept_preparation(request):
 
     Expected payload:
     {
-        "preparation_id": 1
+        "preparation_id": 1,
+        "ready_at": "2025-12-17T17:00:00Z"
     }
     """
     try:
         data = json.loads(request.body)
         preparation_id = data['preparation_id']
+        ready_at = data['ready_at']
 
         preparation = Preparation.objects.get(id=preparation_id)
         preparation.accepted_at = timezone.now()
+        preparation.ready_at = ready_at
         preparation.save()
 
         return JsonResponse({
             'status': 'success',
             'preparation_id': preparation.id,
-            'accepted_at': preparation.accepted_at
+            'accepted_at': preparation.accepted_at,
+            'ready_at': preparation.ready_at
         })
 
     except Preparation.DoesNotExist:
