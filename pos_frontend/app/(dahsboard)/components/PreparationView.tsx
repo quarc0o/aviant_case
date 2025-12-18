@@ -9,7 +9,7 @@ interface PreparationViewProps {
   data: Promise<Preparation[]>;
 }
 
-type Tab = "in_progress" | "completed" | "rejected";
+type Tab = "in_progress" | "completed" | "rejected" | "cancelled";
 
 interface TabConfig {
   id: Tab;
@@ -20,6 +20,7 @@ const TABS: TabConfig[] = [
   { id: "in_progress", label: "In Progress" },
   { id: "completed", label: "Completed" },
   { id: "rejected", label: "Rejected" },
+  { id: "cancelled", label: "Cancelled" },
 ];
 
 export default function PreparationView({ data }: PreparationViewProps) {
@@ -35,6 +36,7 @@ export default function PreparationView({ data }: PreparationViewProps) {
   );
   const completedOrders = preparations.filter((p) => p.completed_at);
   const rejectedOrders = preparations.filter((p) => p.rejected_at);
+  const cancelledOrders = preparations.filter((p) => p.cancelled_at);
 
   const getCount = (tab: Tab): number => {
     switch (tab) {
@@ -44,6 +46,8 @@ export default function PreparationView({ data }: PreparationViewProps) {
         return completedOrders.length;
       case "rejected":
         return rejectedOrders.length;
+      case "cancelled":
+        return cancelledOrders.length;
     }
   };
 
@@ -63,6 +67,10 @@ export default function PreparationView({ data }: PreparationViewProps) {
       case "rejected":
         orders = rejectedOrders;
         emptyMessage = "No rejected orders";
+        break;
+      case "cancelled":
+        orders = cancelledOrders;
+        emptyMessage = "No cancelled orders";
         break;
     }
 

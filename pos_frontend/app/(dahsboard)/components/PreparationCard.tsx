@@ -4,6 +4,7 @@ import { Preparation, Item } from "@/types/preparation";
 import { formatTime } from "@/utils/formatTime";
 import { getPreparationStatus } from "@/utils/preparationStatus";
 import { completeItem } from "@/actions/completeItem";
+import { cancelPreparation } from "@/actions/cancelPreparation";
 import { useTransition } from "react";
 
 interface PreparationCardProps {
@@ -35,16 +36,18 @@ function getTimeRemaining(readyAt: string): { text: string; isOverdue: boolean }
   return { text: `${hrs}h ${remainingMins}m left`, isOverdue: false };
 }
 
-function ItemRow({ item }: { item: Item }) {
+function ItemRow({ item, disabled }: { item: Item; disabled?: boolean }) {
   const isCompleted = !!item.completed_at;
   const [isPending, startTransition] = useTransition();
 
   const handleComplete = () => {
-    if (isCompleted || isPending) return;
+    if (isCompleted || isPending || disabled) return;
     startTransition(async () => {
       await completeItem(item.id);
     });
   };
+
+  const isInteractive = !disabled && !isCompleted;
 
   return (
     <li
@@ -52,7 +55,9 @@ function ItemRow({ item }: { item: Item }) {
       className={`p-4 flex items-start gap-3 h-20 transition-colors ${
         isCompleted
           ? "bg-green-50/50"
-          : "cursor-pointer hover:bg-gray-50 active:bg-gray-100"
+          : isInteractive
+          ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100"
+          : ""
       } ${isPending ? "opacity-50" : ""}`}
     >
       {/* Completion indicator */}
@@ -103,6 +108,7 @@ function ItemRow({ item }: { item: Item }) {
 }
 
 export default function PreparationCard({ preparation }: PreparationCardProps) {
+  const [isPending, startTransition] = useTransition();
   const status = getPreparationStatus(preparation);
   const completedItems = preparation.items.filter(
     (item) => item.completed_at
@@ -111,6 +117,26 @@ export default function PreparationCard({ preparation }: PreparationCardProps) {
   const timeRemaining = preparation.ready_at
     ? getTimeRemaining(preparation.ready_at)
     : null;
+
+  // Disable item editing for rejected, completed, or cancelled orders
+  const isEditable =
+    !preparation.rejected_at &&
+    !preparation.completed_at &&
+    !preparation.cancelled_at;
+
+  // Show cancel button for in-progress orders
+  const canCancel =
+    preparation.accepted_at &&
+    !preparation.completed_at &&
+    !preparation.rejected_at &&
+    !preparation.cancelled_at;
+
+  const handleCancel = () => {
+    if (isPending) return;
+    startTransition(async () => {
+      await cancelPreparation(preparation.id);
+    });
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -125,7 +151,7 @@ export default function PreparationCard({ preparation }: PreparationCardProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {timeRemaining && (
+          {timeRemaining && !preparation.completed_at && (
             <span
               className={`px-2.5 py-1 rounded-md text-sm font-semibold ${
                 timeRemaining.isOverdue
@@ -172,9 +198,22 @@ export default function PreparationCard({ preparation }: PreparationCardProps) {
       {/* Items list */}
       <ul className="divide-y divide-gray-100">
         {preparation.items.map((item) => (
-          <ItemRow key={item.id} item={item} />
+          <ItemRow key={item.id} item={item} disabled={!isEditable} />
         ))}
       </ul>
+
+      {/* Cancel button for in-progress orders */}
+      {canCancel && (
+        <div className="p-3 border-t border-gray-100 bg-gray-50">
+          <button
+            onClick={handleCancel}
+            disabled={isPending}
+            className="w-full py-2 px-4 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isPending ? "Cancelling..." : "Cancel Preparation"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -217,3 +217,36 @@ def reject_preparation(request):
         return JsonResponse({'error': f'Missing field: {e}'}, status=400)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+
+@csrf_exempt
+@require_POST
+def cancel_preparation(request):
+    """
+    API endpoint for cancelling a preparation (e.g., kitchen cancels an in-progress order).
+
+    Expected payload:
+    {
+        "preparation_id": 1
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        preparation_id = data['preparation_id']
+
+        preparation = Preparation.objects.get(id=preparation_id)
+        preparation.cancelled_at = timezone.now()
+        preparation.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'preparation_id': preparation.id,
+            'cancelled_at': preparation.cancelled_at
+        })
+
+    except Preparation.DoesNotExist:
+        return JsonResponse({'error': 'Preparation not found'}, status=404)
+    except KeyError as e:
+        return JsonResponse({'error': f'Missing field: {e}'}, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
