@@ -8,6 +8,7 @@ class Preparation(models.Model):
     ready_at = models.DateTimeField(null=True, blank=True)
     rejected_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by_customer = models.BooleanField(default=False)
     delayed_to = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 

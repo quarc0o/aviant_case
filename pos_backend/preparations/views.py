@@ -20,6 +20,7 @@ def get_preparations(request):
             'ready_at': preparation.ready_at,
             'rejected_at': preparation.rejected_at,
             'cancelled_at': preparation.cancelled_at,
+            'cancelled_by_customer': preparation.cancelled_by_customer,
             'delayed_to': preparation.delayed_to,
             'completed_at': preparation.completed_at,
             'items': list(preparation.items.values('id', 'name', 'quantity', 'notes', 'completed_at'))
@@ -74,7 +75,7 @@ def preparation_created(request):
 @require_POST
 def preparation_cancelled(request):
     """
-    Webhook endpoint for cancelling a preparation.
+    Webhook endpoint for cancelling a preparation (triggered by customer).
 
     Expected payload:
     {
@@ -87,12 +88,14 @@ def preparation_cancelled(request):
 
         preparation = Preparation.objects.get(id=preparation_id)
         preparation.cancelled_at = timezone.now()
+        preparation.cancelled_by_customer = True
         preparation.save()
 
         return JsonResponse({
             'status': 'success',
             'preparation_id': preparation.id,
-            'cancelled_at': preparation.cancelled_at
+            'cancelled_at': preparation.cancelled_at,
+            'cancelled_by_customer': preparation.cancelled_by_customer
         })
 
     except Preparation.DoesNotExist:
