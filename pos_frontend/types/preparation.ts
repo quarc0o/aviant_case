@@ -15,5 +15,6 @@ export interface Preparation {
   rejected_at: string | null;
   cancelled_at: string | null;
   delayed_to: string | null;
+  completed_at: string | null;
   items: Item[];
 }

@@ -21,6 +21,7 @@ def get_preparations(request):
             'rejected_at': preparation.rejected_at,
             'cancelled_at': preparation.cancelled_at,
             'delayed_to': preparation.delayed_to,
+            'completed_at': preparation.completed_at,
             'items': list(preparation.items.values('id', 'name', 'quantity', 'notes', 'completed_at'))
         })
 
@@ -107,6 +108,7 @@ def preparation_cancelled(request):
 def complete_item(request):
     """
     API endpoint for marking an item as completed.
+    When all items in a preparation are completed, the preparation is also marked as completed.
 
     Expected payload:
     {
@@ -121,11 +123,22 @@ def complete_item(request):
         item.completed_at = timezone.now()
         item.save()
 
+        preparation = item.preparation
+        preparation_completed = False
+
+        # Check if all items are now completed
+        if preparation.all_items_completed() and not preparation.completed_at:
+            preparation.completed_at = timezone.now()
+            preparation.save()
+            preparation_completed = True
+
         return JsonResponse({
             'status': 'success',
             'item_id': item.id,
-            'preparation_id': item.preparation_id,
-            'completed_at': item.completed_at
+            'preparation_id': preparation.id,
+            'completed_at': item.completed_at,
+            'preparation_completed': preparation_completed,
+            'preparation_completed_at': preparation.completed_at
         })
 
     except Item.DoesNotExist:

@@ -9,9 +9,14 @@ class Preparation(models.Model):
     rejected_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     delayed_to = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Preparation {self.id} - {self.order_id}"
+
+    def all_items_completed(self):
+        """Check if all items in this preparation are completed."""
+        return self.items.exists() and not self.items.filter(completed_at__isnull=True).exists()
 
 
 class Item(models.Model):
