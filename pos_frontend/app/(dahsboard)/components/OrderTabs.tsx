@@ -10,7 +10,7 @@ const TABS: Tab[] = [
   { id: "all", label: "All" },
   { id: "new", label: "New" },
   { id: "in_progress", label: "In Progress" },
-  { id: "completed", label: "Completed" },
+  { id: "done", label: "Done" },
 ];
 
 interface OrderTabsProps {

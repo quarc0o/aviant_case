@@ -9,9 +9,9 @@ from .serializers import OrderSerializer
 
 @api_view(['GET'])
 def order_list(request):
-    """List all active orders for the restaurant"""
+    """List all orders for the restaurant (excluding cancelled/rejected)"""
     orders = Order.objects.exclude(
-        status__in=['DONE', 'CANCELLED', 'REJECTED']
+        status__in=['CANCELLED', 'REJECTED']
     ).order_by('-created_at')
     serializer = OrderSerializer(orders, many=True)
     return Response(serializer.data)

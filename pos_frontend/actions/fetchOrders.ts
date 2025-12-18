@@ -4,7 +4,7 @@ import { Order } from "@/types/order";
 
 const API_URL = process.env.API_URL || "http://localhost:8000";
 
-export type OrderFilter = "all" | "new" | "in_progress" | "completed";
+export type OrderFilter = "all" | "new" | "in_progress" | "done";
 
 export async function fetchOrders(): Promise<Order[]> {
   const response = await fetch(`${API_URL}/api/orders/`, {

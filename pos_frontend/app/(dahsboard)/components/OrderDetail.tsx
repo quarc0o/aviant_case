@@ -3,7 +3,16 @@
 import { useState, useTransition } from "react";
 import { Order, OrderStatus } from "@/types/order";
 import { acceptOrder } from "@/actions/acceptOrder";
+import { completeOrder } from "@/actions/completeOrder";
 import CountdownTimer from "./CountdownTimer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface OrderDetailProps {
   order: Order;
@@ -83,6 +92,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
   const [selectedMinutes, setSelectedMinutes] = useState(15);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
 
   const handleAccept = () => {
     setError(null);
@@ -94,83 +104,97 @@ export default function OrderDetail({ order }: OrderDetailProps) {
     });
   };
 
+  const handleComplete = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await completeOrder(order.id);
+      if (!result.success) {
+        setError(result.error || "Failed to complete order");
+      }
+      setShowCompleteDialog(false);
+    });
+  };
+
+  const isInProgress = order.status === "ACCEPTED" || order.status === "DELAYED";
+
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold text-gray-900">Order #{order.id}</h2>
-          <span
-            className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(
-              order.status
-            )}`}
-          >
-            {getStatusLabel(order.status)}
-          </span>
-        </div>
-        <p className="text-gray-500">{formatDateTime(order.created_at)}</p>
-      </div>
-
-      {/* Customer info */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
-          Customer
-        </h3>
-        <p className="text-gray-900 font-medium">{order.customer_name}</p>
-        <p className="text-sm text-gray-600 mt-1">{order.delivery_address}</p>
-      </div>
-
-      {/* Order items */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-          Items
-        </h3>
-        <div className="space-y-3">
-          {order.items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0"
+    <div className="relative h-full flex flex-col">
+      {/* Scrollable content */}
+      <div className={`flex-1 overflow-y-auto p-6 ${isInProgress ? "pb-24" : ""}`}>
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold text-gray-900">Order #{order.id}</h2>
+            <span
+              className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(
+                order.status
+              )}`}
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-500">
-                    {item.quantity}x
-                  </span>
-                  <span className="font-medium text-gray-900">{item.name}</span>
+              {getStatusLabel(order.status)}
+            </span>
+          </div>
+          <p className="text-gray-500">{formatDateTime(order.created_at)}</p>
+        </div>
+
+        {/* Customer info */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Customer
+          </h3>
+          <p className="text-gray-900 font-medium">{order.customer_name}</p>
+          <p className="text-sm text-gray-600 mt-1">{order.delivery_address}</p>
+        </div>
+
+        {/* Order items */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
+            Items
+          </h3>
+          <div className="space-y-3">
+            {order.items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-500">
+                      {item.quantity}x
+                    </span>
+                    <span className="font-medium text-gray-900">{item.name}</span>
+                  </div>
+                  {item.notes && (
+                    <p className="text-sm text-gray-500 mt-1 ml-6">{item.notes}</p>
+                  )}
                 </div>
-                {item.notes && (
-                  <p className="text-sm text-gray-500 mt-1 ml-6">{item.notes}</p>
-                )}
+                <span className="text-gray-900">
+                  ${parseFloat(item.unit_price).toFixed(2)}
+                </span>
               </div>
-              <span className="text-gray-900">
-                ${parseFloat(item.unit_price).toFixed(2)}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Countdown timer (shown for accepted/delayed orders) */}
-      {(order.status === "ACCEPTED" || order.status === "DELAYED") &&
-        (() => {
-          const targetTime = getTargetTime(order);
-          return targetTime ? <CountdownTimer targetTime={targetTime} /> : null;
-        })()}
+        {/* Countdown timer (shown for accepted/delayed orders) */}
+        {isInProgress &&
+          (() => {
+            const targetTime = getTargetTime(order);
+            return targetTime ? <CountdownTimer targetTime={targetTime} /> : null;
+          })()}
 
-      {/* Total */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-medium text-gray-900">Total</span>
-          <span className="text-xl font-bold text-gray-900">
-            ${parseFloat(order.total_price).toFixed(2)}
-          </span>
+        {/* Total */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-medium text-gray-900">Total</span>
+            <span className="text-xl font-bold text-gray-900">
+              ${parseFloat(order.total_price).toFixed(2)}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="mt-6">
+        {/* Actions for new orders (inline) */}
         {order.status === "CREATED" && (
-          <div className="space-y-4">
+          <div className="mt-6 space-y-4">
             {/* Time selection */}
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">
@@ -195,9 +219,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
             </div>
 
             {/* Error message */}
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-600">{error}</p>}
 
             {/* Action buttons */}
             <div className="flex gap-3">
@@ -217,18 +239,53 @@ export default function OrderDetail({ order }: OrderDetailProps) {
             </div>
           </div>
         )}
+      </div>
 
-        {(order.status === "ACCEPTED" || order.status === "DELAYED") && (
+      {/* Sticky bottom bar for in-progress orders */}
+      {isInProgress && (
+        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
           <div className="flex gap-3">
-            <button className="flex-1 py-2 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
-              Mark Complete
+            <button
+              onClick={() => setShowCompleteDialog(true)}
+              className="flex-1 py-3 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Mark as Done
             </button>
-            <button className="py-2 px-4 text-orange-600 font-medium rounded-lg border border-orange-300 hover:bg-orange-50 transition-colors">
+            <button className="py-3 px-4 text-orange-600 font-medium rounded-lg border border-orange-300 hover:bg-orange-50 transition-colors">
               Delay
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Done confirmation dialog */}
+      <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Order as Done?</DialogTitle>
+            <DialogDescription>
+              This will mark order #{order.id} as done. The customer will be
+              notified that their order is ready.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => setShowCompleteDialog(false)}
+              disabled={isPending}
+              className="py-2 px-4 text-gray-600 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleComplete}
+              disabled={isPending}
+              className="py-2 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {isPending ? "Marking..." : "Yes, Done"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

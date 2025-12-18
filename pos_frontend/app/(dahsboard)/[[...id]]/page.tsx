@@ -16,7 +16,7 @@ function filterOrders(orders: Order[], filter: OrderFilter): Order[] {
       return orders.filter((o) => o.status === "CREATED");
     case "in_progress":
       return orders.filter((o) => o.status === "ACCEPTED" || o.status === "DELAYED");
-    case "completed":
+    case "done":
       return orders.filter((o) => o.status === "DONE");
     default:
       return orders;
@@ -28,7 +28,7 @@ function countOrders(orders: Order[]) {
     all: orders.length,
     new: orders.filter((o) => o.status === "CREATED").length,
     in_progress: orders.filter((o) => o.status === "ACCEPTED" || o.status === "DELAYED").length,
-    completed: orders.filter((o) => o.status === "DONE").length,
+    done: orders.filter((o) => o.status === "DONE").length,
   };
 }
 
