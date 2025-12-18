@@ -26,6 +26,13 @@ export function getPreparationStatus(
       bgColor: "bg-green-100",
     };
   }
+  if (preparation.accepted_at && preparation.delayed_to) {
+    return {
+      label: "Delayed",
+      color: "text-amber-700",
+      bgColor: "bg-amber-100",
+    };
+  }
   if (preparation.accepted_at) {
     return {
       label: "In Progress",

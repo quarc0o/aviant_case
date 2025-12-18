@@ -5,7 +5,15 @@ import { formatTime } from "@/utils/formatTime";
 import { getPreparationStatus } from "@/utils/preparationStatus";
 import { completeItem } from "@/actions/completeItem";
 import { cancelPreparation } from "@/actions/cancelPreparation";
-import { useTransition } from "react";
+import { delayPreparation } from "@/actions/delayPreparation";
+import { useState, useTransition } from "react";
+
+const DELAY_OPTIONS = [
+  { label: "+5m", minutes: 5 },
+  { label: "+10m", minutes: 10 },
+  { label: "+15m", minutes: 15 },
+  { label: "+30m", minutes: 30 },
+];
 
 interface PreparationCardProps {
   preparation: Preparation;
@@ -109,13 +117,17 @@ function ItemRow({ item, disabled }: { item: Item; disabled?: boolean }) {
 
 export default function PreparationCard({ preparation }: PreparationCardProps) {
   const [isPending, startTransition] = useTransition();
+  const [showDelayOptions, setShowDelayOptions] = useState(false);
   const status = getPreparationStatus(preparation);
   const completedItems = preparation.items.filter(
     (item) => item.completed_at
   ).length;
   const totalItems = preparation.items.length;
-  const timeRemaining = preparation.ready_at
-    ? getTimeRemaining(preparation.ready_at)
+
+  // Use delayed_to if set, otherwise use ready_at
+  const effectiveReadyTime = preparation.delayed_to || preparation.ready_at;
+  const timeRemaining = effectiveReadyTime
+    ? getTimeRemaining(effectiveReadyTime)
     : null;
 
   // Disable item editing for rejected, completed, or cancelled orders
@@ -124,8 +136,8 @@ export default function PreparationCard({ preparation }: PreparationCardProps) {
     !preparation.completed_at &&
     !preparation.cancelled_at;
 
-  // Show cancel button for in-progress orders
-  const canCancel =
+  // Show action buttons for in-progress orders
+  const canModify =
     preparation.accepted_at &&
     !preparation.completed_at &&
     !preparation.rejected_at &&
@@ -135,6 +147,17 @@ export default function PreparationCard({ preparation }: PreparationCardProps) {
     if (isPending) return;
     startTransition(async () => {
       await cancelPreparation(preparation.id);
+    });
+  };
+
+  const handleDelay = (minutes: number) => {
+    if (isPending) return;
+    const baseTime = preparation.delayed_to || preparation.ready_at || new Date().toISOString();
+    const newTime = new Date(new Date(baseTime).getTime() + minutes * 60 * 1000);
+
+    startTransition(async () => {
+      await delayPreparation(preparation.id, newTime.toISOString());
+      setShowDelayOptions(false);
     });
   };
 
@@ -202,16 +225,50 @@ export default function PreparationCard({ preparation }: PreparationCardProps) {
         ))}
       </ul>
 
-      {/* Cancel button for in-progress orders */}
-      {canCancel && (
-        <div className="p-3 border-t border-gray-100 bg-gray-50">
-          <button
-            onClick={handleCancel}
-            disabled={isPending}
-            className="w-full py-2 px-4 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isPending ? "Cancelling..." : "Cancel Preparation"}
-          </button>
+      {/* Action buttons for in-progress orders */}
+      {canModify && (
+        <div className="p-3 border-t border-gray-100 bg-gray-50 space-y-2">
+          {/* Delay options */}
+          {showDelayOptions ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Add time:</span>
+              <div className="flex gap-1 flex-1">
+                {DELAY_OPTIONS.map((option) => (
+                  <button
+                    key={option.minutes}
+                    onClick={() => handleDelay(option.minutes)}
+                    disabled={isPending}
+                    className="flex-1 py-2 px-2 text-sm font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-md transition-colors disabled:opacity-50"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowDelayOptions(false)}
+                className="py-2 px-3 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDelayOptions(true)}
+                disabled={isPending}
+                className="flex-1 py-2 px-4 text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Delay
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={isPending}
+                className="flex-1 py-2 px-4 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isPending ? "..." : "Cancel"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

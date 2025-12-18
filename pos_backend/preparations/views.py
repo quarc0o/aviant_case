@@ -254,3 +254,38 @@ def cancel_preparation(request):
         return JsonResponse({'error': f'Missing field: {e}'}, status=400)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+
+@csrf_exempt
+@require_POST
+def delay_preparation(request):
+    """
+    API endpoint for delaying a preparation (adding more time).
+
+    Expected payload:
+    {
+        "preparation_id": 1,
+        "delayed_to": "2025-12-17T18:00:00Z"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        preparation_id = data['preparation_id']
+        delayed_to = data['delayed_to']
+
+        preparation = Preparation.objects.get(id=preparation_id)
+        preparation.delayed_to = delayed_to
+        preparation.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'preparation_id': preparation.id,
+            'delayed_to': preparation.delayed_to
+        })
+
+    except Preparation.DoesNotExist:
+        return JsonResponse({'error': 'Preparation not found'}, status=404)
+    except KeyError as e:
+        return JsonResponse({'error': f'Missing field: {e}'}, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
