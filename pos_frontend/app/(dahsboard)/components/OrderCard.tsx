@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Order, OrderStatus } from "@/types/order";
 
 interface OrderCardProps {
@@ -52,10 +55,56 @@ function getStatusLabel(status: OrderStatus): string {
   }
 }
 
+function getTargetTime(order: Order): Date | null {
+  if (!order.estimated_prep_time) return null;
+
+  const acceptedEvent = order.events.find(
+    (e) => e.event_type === "preparation_accepted"
+  );
+  if (!acceptedEvent) return null;
+
+  const acceptedAt = new Date(acceptedEvent.created_at);
+  return new Date(acceptedAt.getTime() + order.estimated_prep_time * 60 * 1000);
+}
+
+function CountdownBadge({ targetTime }: { targetTime: Date }) {
+  const [timeRemaining, setTimeRemaining] = useState<number>(
+    targetTime.getTime() - Date.now()
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRemaining(targetTime.getTime() - Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [targetTime]);
+
+  const isOverdue = timeRemaining <= 0;
+  const totalSeconds = Math.abs(Math.floor(timeRemaining / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const display = `${isOverdue ? "+" : ""}${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+  return (
+    <span
+      className={`text-xs tabular-nums ${
+        isOverdue ? "text-red-600" : "text-gray-500"
+      }`}
+    >
+      <span className="font-medium">{display}</span>
+      {isOverdue ? " overdue" : " remaining"}
+    </span>
+  );
+}
+
 export default function OrderCard({ order, isSelected }: OrderCardProps) {
   const itemsSummary = order.items
     .map((item) => `${item.quantity}x ${item.name}`)
     .join(", ");
+
+  const isInProgress = order.status === "ACCEPTED" || order.status === "DELAYED";
+  const targetTime = isInProgress ? getTargetTime(order) : null;
 
   return (
     <div
@@ -75,13 +124,16 @@ export default function OrderCard({ order, isSelected }: OrderCardProps) {
       </p>
 
       <div className="flex items-center justify-between">
-        <span
-          className={`px-2 py-0.5 text-xs font-medium rounded ${getStatusColor(
-            order.status
-          )}`}
-        >
-          {getStatusLabel(order.status)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-2 py-0.5 text-xs font-medium rounded ${getStatusColor(
+              order.status
+            )}`}
+          >
+            {getStatusLabel(order.status)}
+          </span>
+          {targetTime && <CountdownBadge targetTime={targetTime} />}
+        </div>
         <span className="text-sm font-medium text-gray-900">
           ${parseFloat(order.total_price).toFixed(2)}
         </span>

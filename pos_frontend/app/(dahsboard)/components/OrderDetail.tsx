@@ -3,9 +3,22 @@
 import { useState, useTransition } from "react";
 import { Order, OrderStatus } from "@/types/order";
 import { acceptOrder } from "@/actions/acceptOrder";
+import CountdownTimer from "./CountdownTimer";
 
 interface OrderDetailProps {
   order: Order;
+}
+
+function getTargetTime(order: Order): Date | null {
+  if (!order.estimated_prep_time) return null;
+
+  const acceptedEvent = order.events.find(
+    (e) => e.event_type === "preparation_accepted"
+  );
+  if (!acceptedEvent) return null;
+
+  const acceptedAt = new Date(acceptedEvent.created_at);
+  return new Date(acceptedAt.getTime() + order.estimated_prep_time * 60 * 1000);
 }
 
 const TIME_OPTIONS = [
@@ -137,15 +150,12 @@ export default function OrderDetail({ order }: OrderDetailProps) {
         </div>
       </div>
 
-      {/* Prep time (shown when already accepted) */}
-      {order.estimated_prep_time && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
-            Estimated Prep Time
-          </h3>
-          <p className="text-gray-900 font-medium">{order.estimated_prep_time} minutes</p>
-        </div>
-      )}
+      {/* Countdown timer (shown for accepted/delayed orders) */}
+      {(order.status === "ACCEPTED" || order.status === "DELAYED") &&
+        (() => {
+          const targetTime = getTargetTime(order);
+          return targetTime ? <CountdownTimer targetTime={targetTime} /> : null;
+        })()}
 
       {/* Total */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
