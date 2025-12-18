@@ -1,6 +1,6 @@
 "use client";
 import { Preparation } from "@/types/preparation";
-import { use } from "react";
+import { use, useState } from "react";
 import PreparationCard from "./PreparationCard";
 import IncomingOrderCard from "./IncomingOrderCard";
 
@@ -8,43 +8,85 @@ interface PreparationViewProps {
   data: Promise<Preparation[]>;
 }
 
+type Tab = "in_progress" | "completed" | "rejected";
+
+interface TabConfig {
+  id: Tab;
+  label: string;
+}
+
+const TABS: TabConfig[] = [
+  { id: "in_progress", label: "In Progress" },
+  { id: "completed", label: "Completed" },
+  { id: "rejected", label: "Rejected" },
+];
+
 export default function PreparationView({ data }: PreparationViewProps) {
   const preparations = use(data);
+  const [activeTab, setActiveTab] = useState<Tab>("in_progress");
 
-  // Separate incoming (not accepted) from active (accepted) preparations
+  // Filter preparations by status
   const incomingOrders = preparations.filter(
     (p) => !p.accepted_at && !p.rejected_at && !p.cancelled_at
   );
-  const activePreparations = preparations.filter(
-    (p) => p.accepted_at && !p.rejected_at && !p.cancelled_at
+  const inProgressOrders = preparations.filter(
+    (p) => p.accepted_at && !p.completed_at && !p.rejected_at && !p.cancelled_at
   );
+  const completedOrders = preparations.filter((p) => p.completed_at);
+  const rejectedOrders = preparations.filter((p) => p.rejected_at);
 
-  if (preparations.length === 0) {
+  const getCount = (tab: Tab): number => {
+    switch (tab) {
+      case "in_progress":
+        return inProgressOrders.length;
+      case "completed":
+        return completedOrders.length;
+      case "rejected":
+        return rejectedOrders.length;
+    }
+  };
+
+  const getTabContent = () => {
+    let orders: Preparation[] = [];
+    let emptyMessage = "";
+
+    switch (activeTab) {
+      case "in_progress":
+        orders = inProgressOrders;
+        emptyMessage = "No orders in progress";
+        break;
+      case "completed":
+        orders = completedOrders;
+        emptyMessage = "No completed orders";
+        break;
+      case "rejected":
+        orders = rejectedOrders;
+        emptyMessage = "No rejected orders";
+        break;
+    }
+
+    if (orders.length === 0) {
+      return (
+        <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-200">
+          <p>{emptyMessage}</p>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-gray-500">
-        <svg
-          className="w-16 h-16 mb-4 text-gray-300"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-          />
-        </svg>
-        <p className="text-lg">No preparations yet</p>
+      <div className="space-y-3">
+        {orders.map((preparation) => (
+          <PreparationCard key={preparation.id} preparation={preparation} />
+        ))}
       </div>
     );
-  }
+  };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 space-y-6">
-      {/* Incoming Orders Section */}
+    <div className="w-full max-w-2xl mx-auto p-4 space-y-4">
+      {/* Incoming Orders Section - Always visible at top */}
       {incomingOrders.length > 0 && (
-        <section>
+        <section className="mb-2">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
               Incoming
@@ -64,23 +106,40 @@ export default function PreparationView({ data }: PreparationViewProps) {
         </section>
       )}
 
-      {/* Active Preparations Section */}
-      <section>
-        <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-          Active
-        </h2>
-        {activePreparations.length > 0 ? (
-          <div className="space-y-4">
-            {activePreparations.map((preparation) => (
-              <PreparationCard key={preparation.id} preparation={preparation} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-200">
-            <p>No active preparations</p>
-          </div>
-        )}
-      </section>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+        {TABS.map((tab) => {
+          const count = getCount(tab.id);
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                isActive
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span
+                  className={`px-1.5 py-0.5 text-xs rounded ${
+                    isActive
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      <section>{getTabContent()}</section>
     </div>
   );
 }
