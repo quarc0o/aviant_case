@@ -1,4 +1,3 @@
-import json
 import logging
 import requests
 from django.conf import settings
@@ -7,6 +6,23 @@ from django.dispatch import receiver
 from .models import Preparation
 
 logger = logging.getLogger(__name__)
+
+# ANSI Colors
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+RED = '\033[91m'
+CYAN = '\033[96m'
+RESET = '\033[0m'
+
+EVENT_COLORS = {
+    'preparation.accepted': GREEN,
+    'preparation.completed': GREEN,
+    'preparation.ready': GREEN,
+    'preparation.delayed': YELLOW,
+    'preparation.cancelled': RED,
+    'preparation.rejected': RED,
+    'preparation.updated': CYAN,
+}
 
 # Fields to track for webhook notifications
 TRACKED_FIELDS = [
@@ -55,15 +71,15 @@ def send_webhook(event_type: str, preparation: Preparation, changed_fields: list
             timeout=10
         )
         response.raise_for_status()
-        logger.info(f"Webhook sent successfully for {event_type}: {preparation.order_id}")
+        color = EVENT_COLORS.get(event_type, CYAN)
+        logger.info(f"{color}⚡ {event_type}{RESET} → {preparation.order_id}")
     except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to send webhook for {event_type}: {e}")
+        logger.error(f"{RED}✗ Webhook failed:{RESET} {e}")
 
 
 @receiver(pre_save, sender=Preparation)
 def preparation_pre_save(sender, instance, **kwargs):
     """Store original field values before save."""
-    logger.debug(f"pre_save signal fired for Preparation {instance.pk or 'NEW'}")
     if instance.pk:
         try:
             original = Preparation.objects.get(pk=instance.pk)
@@ -71,7 +87,6 @@ def preparation_pre_save(sender, instance, **kwargs):
                 field: getattr(original, field)
                 for field in TRACKED_FIELDS
             }
-            logger.debug(f"Stored original values: {instance._original_values}")
         except Preparation.DoesNotExist:
             instance._original_values = {}
     else:
