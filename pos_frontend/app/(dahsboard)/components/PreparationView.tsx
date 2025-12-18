@@ -3,6 +3,7 @@ import { Preparation } from "@/types/preparation";
 import { use, useState } from "react";
 import PreparationCard from "./PreparationCard";
 import IncomingOrderCard from "./IncomingOrderCard";
+import OrderNotifications from "./OrderNotifications";
 
 interface PreparationViewProps {
   data: Promise<Preparation[]>;
@@ -84,6 +85,9 @@ export default function PreparationView({ data }: PreparationViewProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4 space-y-4">
+      {/* Notification system for new orders */}
+      <OrderNotifications preparations={preparations} />
+
       {/* Incoming Orders Section - Always visible at top */}
       {incomingOrders.length > 0 && (
         <section className="mb-2">
