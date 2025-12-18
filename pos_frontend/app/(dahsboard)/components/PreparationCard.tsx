@@ -1,6 +1,10 @@
+"use client";
+
 import { Preparation, Item } from "@/types/preparation";
 import { formatTime } from "@/utils/formatTime";
 import { getPreparationStatus } from "@/utils/preparationStatus";
+import { completeItem } from "@/actions/completeItem";
+import { useTransition } from "react";
 
 interface PreparationCardProps {
   preparation: Preparation;
@@ -33,16 +37,27 @@ function getTimeRemaining(readyAt: string): { text: string; isOverdue: boolean }
 
 function ItemRow({ item }: { item: Item }) {
   const isCompleted = !!item.completed_at;
+  const [isPending, startTransition] = useTransition();
+
+  const handleComplete = () => {
+    if (isCompleted || isPending) return;
+    startTransition(async () => {
+      await completeItem(item.id);
+    });
+  };
 
   return (
     <li
-      className={`p-4 flex items-start gap-3 min-h-14 ${
-        isCompleted ? "bg-green-50/50" : ""
-      }`}
+      onClick={handleComplete}
+      className={`p-4 flex items-start gap-3 h-20 transition-colors ${
+        isCompleted
+          ? "bg-green-50/50"
+          : "cursor-pointer hover:bg-gray-50 active:bg-gray-100"
+      } ${isPending ? "opacity-50" : ""}`}
     >
       {/* Completion indicator */}
       <div
-        className={`mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+        className={`mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
           isCompleted
             ? "bg-green-500 border-green-500"
             : "border-gray-300 bg-white"
