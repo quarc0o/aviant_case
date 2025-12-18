@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Preparation } from "@/types/preparation";
+import { useNotifications } from "@/context/NotificationContext";
 
 interface OrderNotificationsProps {
   preparations: Preparation[];
@@ -13,6 +14,7 @@ export default function OrderNotifications({
   preparations,
 }: OrderNotificationsProps) {
   const router = useRouter();
+  const { addNotification } = useNotifications();
   const seenOrderIds = useRef<Set<number>>(new Set());
   const isFirstRender = useRef(true);
 
@@ -21,12 +23,18 @@ export default function OrderNotifications({
     (p) => !p.accepted_at && !p.rejected_at && !p.cancelled_at
   );
 
-  // Show toast for new incoming orders
-  const showNewOrderToast = useCallback((preparation: Preparation) => {
-    toast("New order", {
-      description: "Order #" + preparation.order_id,
-    });
-  }, []);
+  // Show toast and add to notification queue
+  const handleNewOrder = useCallback(
+    (preparation: Preparation) => {
+      // Show toast
+      toast("New order", {
+        description: "Order #" + preparation.order_id,
+      });
+      // Add to notification queue
+      addNotification(preparation);
+    },
+    [addNotification]
+  );
 
   // Check for new orders
   useEffect(() => {
@@ -43,7 +51,7 @@ export default function OrderNotifications({
     incomingOrders.forEach((order) => {
       if (!seenOrderIds.current.has(order.id)) {
         seenOrderIds.current.add(order.id);
-        showNewOrderToast(order);
+        handleNewOrder(order);
       }
     });
 
@@ -55,7 +63,7 @@ export default function OrderNotifications({
         toast.dismiss(`order-${id}`);
       }
     });
-  }, [incomingOrders, showNewOrderToast]);
+  }, [incomingOrders, handleNewOrder]);
 
   // Poll for updates
   useEffect(() => {
