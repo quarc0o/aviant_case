@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Preparation } from "@/types/preparation";
-import { useNotifications } from "@/context/NotificationContext";
 
 interface OrderNotificationsProps {
   preparations: Preparation[];
@@ -14,7 +13,6 @@ export default function OrderNotifications({
   preparations,
 }: OrderNotificationsProps) {
   const router = useRouter();
-  const { addNotification } = useNotifications();
   const seenOrderIds = useRef<Set<number>>(new Set());
   const seenCustomerCancellations = useRef<Set<number>>(new Set());
   const isFirstRender = useRef(true);
@@ -29,16 +27,12 @@ export default function OrderNotifications({
     (p) => p.cancelled_at && p.cancelled_by_customer
   );
 
-  // Show toast and add to notification queue
-  const handleNewOrder = useCallback(
-    (preparation: Preparation) => {
-      toast("New order", {
-        description: "Order #" + preparation.order_id,
-      });
-      addNotification(preparation);
-    },
-    [addNotification]
-  );
+  // Show toast for new order
+  const handleNewOrder = useCallback((preparation: Preparation) => {
+    toast("New order", {
+      description: "Order #" + preparation.order_id,
+    });
+  }, []);
 
   // Show toast for customer cancellation
   const handleCustomerCancellation = useCallback((preparation: Preparation) => {
