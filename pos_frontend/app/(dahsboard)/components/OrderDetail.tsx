@@ -1,8 +1,21 @@
+"use client";
+
+import { useState, useTransition } from "react";
 import { Order, OrderStatus } from "@/types/order";
+import { acceptOrder } from "@/actions/acceptOrder";
 
 interface OrderDetailProps {
   order: Order;
 }
+
+const TIME_OPTIONS = [
+  { label: "10m", minutes: 10 },
+  { label: "15m", minutes: 15 },
+  { label: "20m", minutes: 20 },
+  { label: "30m", minutes: 30 },
+  { label: "45m", minutes: 45 },
+  { label: "1h", minutes: 60 },
+];
 
 function formatDateTime(dateString: string): string {
   const date = new Date(dateString);
@@ -54,6 +67,20 @@ function getStatusLabel(status: OrderStatus): string {
 }
 
 export default function OrderDetail({ order }: OrderDetailProps) {
+  const [selectedMinutes, setSelectedMinutes] = useState(15);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAccept = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await acceptOrder(order.id, selectedMinutes);
+      if (!result.success) {
+        setError(result.error || "Failed to accept order");
+      }
+    });
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -110,7 +137,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
         </div>
       </div>
 
-      {/* Prep time */}
+      {/* Prep time (shown when already accepted) */}
       {order.estimated_prep_time && (
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -131,26 +158,65 @@ export default function OrderDetail({ order }: OrderDetailProps) {
       </div>
 
       {/* Actions */}
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6">
         {order.status === "CREATED" && (
-          <>
-            <button className="flex-1 py-2 px-4 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors">
-              Accept Order
-            </button>
-            <button className="py-2 px-4 text-gray-600 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
-              Reject
-            </button>
-          </>
+          <div className="space-y-4">
+            {/* Time selection */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                Estimated prep time
+              </h3>
+              <div className="flex gap-2 flex-wrap">
+                {TIME_OPTIONS.map((option) => (
+                  <button
+                    key={option.minutes}
+                    onClick={() => setSelectedMinutes(option.minutes)}
+                    disabled={isPending}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      selectedMinutes === option.minutes
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    } disabled:opacity-50`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Error message */}
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleAccept}
+                disabled={isPending}
+                className="flex-1 py-2 px-4 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {isPending ? "Accepting..." : `Accept (${selectedMinutes}m)`}
+              </button>
+              <button
+                disabled={isPending}
+                className="py-2 px-4 text-gray-600 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
         )}
+
         {(order.status === "ACCEPTED" || order.status === "DELAYED") && (
-          <>
+          <div className="flex gap-3">
             <button className="flex-1 py-2 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
               Mark Complete
             </button>
             <button className="py-2 px-4 text-orange-600 font-medium rounded-lg border border-orange-300 hover:bg-orange-50 transition-colors">
               Delay
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>
