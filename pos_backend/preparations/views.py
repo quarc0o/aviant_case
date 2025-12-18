@@ -104,23 +104,21 @@ def preparation_cancelled(request):
 
 @csrf_exempt
 @require_POST
-def update_item(request):
+def complete_item(request):
     """
-    API endpoint for updating an item's estimated completion time.
+    API endpoint for marking an item as completed.
 
     Expected payload:
     {
-        "item_id": 3,
-        "completed_at": "2025-12-17T16:30:00Z"
+        "item_id": 3
     }
     """
     try:
         data = json.loads(request.body)
         item_id = data['item_id']
-        completed_at = data['completed_at']
 
         item = Item.objects.get(id=item_id)
-        item.completed_at = completed_at
+        item.completed_at = timezone.now()
         item.save()
 
         return JsonResponse({
