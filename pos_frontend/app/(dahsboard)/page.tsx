@@ -6,8 +6,16 @@ export default function Home() {
   const preparations = fetchPreparations();
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Suspense fallback={<div>Loading...</div>}>
+    <div className="min-h-screen bg-gray-100">
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center">
+            <div className="flex items-center gap-2 text-gray-500">
+              <span>Loading preparations...</span>
+            </div>
+          </div>
+        }
+      >
         <PreparationView data={preparations} />
       </Suspense>
     </div>
