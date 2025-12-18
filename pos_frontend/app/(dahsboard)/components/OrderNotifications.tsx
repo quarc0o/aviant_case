@@ -16,6 +16,7 @@ export default function OrderNotifications({
   const router = useRouter();
   const { addNotification } = useNotifications();
   const seenOrderIds = useRef<Set<number>>(new Set());
+  const seenCustomerCancellations = useRef<Set<number>>(new Set());
   const isFirstRender = useRef(true);
 
   // Get current incoming orders
@@ -23,18 +24,29 @@ export default function OrderNotifications({
     (p) => !p.accepted_at && !p.rejected_at && !p.cancelled_at
   );
 
+  // Get orders cancelled by customer
+  const customerCancelledOrders = preparations.filter(
+    (p) => p.cancelled_at && p.cancelled_by_customer
+  );
+
   // Show toast and add to notification queue
   const handleNewOrder = useCallback(
     (preparation: Preparation) => {
-      // Show toast
       toast("New order", {
         description: "Order #" + preparation.order_id,
       });
-      // Add to notification queue
       addNotification(preparation);
     },
     [addNotification]
   );
+
+  // Show toast for customer cancellation
+  const handleCustomerCancellation = useCallback((preparation: Preparation) => {
+    toast.error("Order cancelled by customer", {
+      description: "Order #" + preparation.order_id + " was cancelled",
+      duration: 5000,
+    });
+  }, []);
 
   // Check for new orders
   useEffect(() => {
@@ -42,6 +54,9 @@ export default function OrderNotifications({
     if (isFirstRender.current) {
       incomingOrders.forEach((order) => {
         seenOrderIds.current.add(order.id);
+      });
+      customerCancelledOrders.forEach((order) => {
+        seenCustomerCancellations.current.add(order.id);
       });
       isFirstRender.current = false;
       return;
@@ -55,6 +70,14 @@ export default function OrderNotifications({
       }
     });
 
+    // Check for new customer cancellations
+    customerCancelledOrders.forEach((order) => {
+      if (!seenCustomerCancellations.current.has(order.id)) {
+        seenCustomerCancellations.current.add(order.id);
+        handleCustomerCancellation(order);
+      }
+    });
+
     // Clean up dismissed orders from seen set
     const currentIds = new Set(incomingOrders.map((o) => o.id));
     seenOrderIds.current.forEach((id) => {
@@ -63,7 +86,7 @@ export default function OrderNotifications({
         toast.dismiss(`order-${id}`);
       }
     });
-  }, [incomingOrders, handleNewOrder]);
+  }, [incomingOrders, customerCancelledOrders, handleNewOrder, handleCustomerCancellation]);
 
   // Poll for updates
   useEffect(() => {

@@ -73,26 +73,27 @@ def preparation_created(request):
 
 @csrf_exempt
 @require_POST
-def preparation_cancelled(request):
+def order_cancelled(request):
     """
-    Webhook endpoint for cancelling a preparation (triggered by customer).
+    Webhook endpoint for when a customer cancels an order.
 
     Expected payload:
     {
-        "preparation_id": 1
+        "order_id": "ORD-12345"
     }
     """
     try:
         data = json.loads(request.body)
-        preparation_id = data['preparation_id']
+        order_id = data['order_id']
 
-        preparation = Preparation.objects.get(id=preparation_id)
+        preparation = Preparation.objects.get(order_id=order_id)
         preparation.cancelled_at = timezone.now()
         preparation.cancelled_by_customer = True
         preparation.save()
 
         return JsonResponse({
             'status': 'success',
+            'order_id': preparation.order_id,
             'preparation_id': preparation.id,
             'cancelled_at': preparation.cancelled_at,
             'cancelled_by_customer': preparation.cancelled_by_customer

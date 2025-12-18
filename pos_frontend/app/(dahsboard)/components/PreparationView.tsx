@@ -9,7 +9,7 @@ interface PreparationViewProps {
   data: Promise<Preparation[]>;
 }
 
-type Tab = "in_progress" | "completed" | "rejected" | "cancelled";
+type Tab = "in_progress" | "completed" | "rejected" | "cancelled" | "cancelled_by_customer";
 
 interface TabConfig {
   id: Tab;
@@ -21,6 +21,7 @@ const TABS: TabConfig[] = [
   { id: "completed", label: "Completed" },
   { id: "rejected", label: "Rejected" },
   { id: "cancelled", label: "Cancelled" },
+  { id: "cancelled_by_customer", label: "Customer Cancelled" },
 ];
 
 export default function PreparationView({ data }: PreparationViewProps) {
@@ -36,7 +37,12 @@ export default function PreparationView({ data }: PreparationViewProps) {
   );
   const completedOrders = preparations.filter((p) => p.completed_at);
   const rejectedOrders = preparations.filter((p) => p.rejected_at);
-  const cancelledOrders = preparations.filter((p) => p.cancelled_at);
+  const cancelledOrders = preparations.filter(
+    (p) => p.cancelled_at && !p.cancelled_by_customer
+  );
+  const cancelledByCustomerOrders = preparations.filter(
+    (p) => p.cancelled_at && p.cancelled_by_customer
+  );
 
   const getCount = (tab: Tab): number => {
     switch (tab) {
@@ -48,6 +54,8 @@ export default function PreparationView({ data }: PreparationViewProps) {
         return rejectedOrders.length;
       case "cancelled":
         return cancelledOrders.length;
+      case "cancelled_by_customer":
+        return cancelledByCustomerOrders.length;
     }
   };
 
@@ -71,6 +79,10 @@ export default function PreparationView({ data }: PreparationViewProps) {
       case "cancelled":
         orders = cancelledOrders;
         emptyMessage = "No cancelled orders";
+        break;
+      case "cancelled_by_customer":
+        orders = cancelledByCustomerOrders;
+        emptyMessage = "No orders cancelled by customers";
         break;
     }
 
